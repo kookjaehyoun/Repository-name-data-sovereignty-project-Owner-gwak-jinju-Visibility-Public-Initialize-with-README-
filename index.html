@@ -122,6 +122,15 @@
             background-color: #545b62;
         }
 
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
         .btn-danger {
             background-color: #dc3545;
             color: white;
@@ -325,9 +334,17 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
+            margin-bottom: 30px;
         }
 
         .reports-section h2 {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
         }
 
@@ -366,6 +383,53 @@
             margin-bottom: 20px;
         }
 
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
         @media (max-width: 768px) {
             .cases {
                 grid-template-columns: 1fr;
@@ -387,6 +451,12 @@
             .reports-table th,
             .reports-table td {
                 padding: 8px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
             }
         }
 
@@ -488,10 +558,55 @@
                 <div class="stats-section" id="statsSection"></div>
 
                 <div class="reports-section">
-                    <h2>모든 제보</h2>
+                    <div class="section-header">
+                        <h2>📌 사례 관리</h2>
+                        <button class="btn btn-success" onclick="openAddCaseModal()">+ 새 사례 추가</button>
+                    </div>
+                    <div id="casesTableContainer"></div>
+                </div>
+
+                <div class="reports-section">
+                    <h2>📝 모든 제보</h2>
                     <div id="reportsTableContainer"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Case Modal -->
+    <div id="addCaseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>새 사례 추가</h2>
+                <span class="close" onclick="closeAddCaseModal()">&times;</span>
+            </div>
+            <form id="addCaseForm">
+                <div class="form-group">
+                    <label>제목 *</label>
+                    <input type="text" name="title" placeholder="사례 제목을 입력하세요" required>
+                </div>
+                <div class="form-group">
+                    <label>설명 *</label>
+                    <textarea name="description" placeholder="상세 설명을 입력하세요" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>카테고리 *</label>
+                    <select name="category" required>
+                        <option value="">선택하세요</option>
+                        <option value="안면인식">안면인식</option>
+                        <option value="위치 추적">위치 추적</option>
+                        <option value="음성 기록">음성 기록</option>
+                        <option value="개인정보 판매">개인정보 판매</option>
+                        <option value="차별 알고리즘">차별 알고리즘</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>제보자 (선택)</label>
+                    <input type="text" name="reported_by" placeholder="제보자 이름 (익명 가능)">
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">사례 추가</button>
+            </form>
         </div>
     </div>
 
@@ -525,6 +640,28 @@
                     return defaultCases;
                 }
                 return JSON.parse(cases);
+            },
+
+            addCase(caseData) {
+                const cases = this.getCases();
+                const newCase = {
+                    id: Math.max(...cases.map(c => c.id), 0) + 1,
+                    title: caseData.title,
+                    description: caseData.description,
+                    category: caseData.category,
+                    reported_by: caseData.reported_by || '익명',
+                    reported_date: new Date().toISOString(),
+                    status: 'pending'
+                };
+                cases.push(newCase);
+                localStorage.setItem('cases', JSON.stringify(cases));
+                return newCase;
+            },
+
+            deleteCase(caseId) {
+                let cases = this.getCases();
+                cases = cases.filter(c => c.id !== caseId);
+                localStorage.setItem('cases', JSON.stringify(cases));
             },
 
             getReports() {
@@ -651,7 +788,6 @@
             const username = this.elements['username'].value;
             const password = this.elements['password'].value;
 
-            // Simple authentication (for demo)
             if (username === 'admin' && password === 'admin123') {
                 localStorage.setItem('admin_token', 'demo_token_' + Date.now());
                 document.getElementById('adminLoginForm').style.display = 'none';
@@ -661,9 +797,35 @@
             }
         });
 
+        // Modal Functions
+        function openAddCaseModal() {
+            document.getElementById('addCaseModal').classList.add('active');
+        }
+
+        function closeAddCaseModal() {
+            document.getElementById('addCaseModal').classList.remove('active');
+            document.getElementById('addCaseForm').reset();
+        }
+
+        document.getElementById('addCaseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const caseData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                category: formData.get('category'),
+                reported_by: formData.get('reported_by') || '익명'
+            };
+
+            dataManager.addCase(caseData);
+            closeAddCaseModal();
+            renderAdminDashboard();
+        });
+
         // Render Admin Dashboard
         function renderAdminDashboard() {
             const stats = dataManager.getStats();
+            const cases = dataManager.getCases();
             const reports = dataManager.getReports();
 
             // Render Stats
@@ -682,8 +844,36 @@
                 </div>
             `;
 
+            // Render Cases Table
+            const casesTableHTML = `
+                <table class="reports-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>제목</th>
+                            <th>카테고리</th>
+                            <th>제보자</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${cases.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding: 20px;">사례가 없습니다.</td></tr>' : cases.map(c => `
+                            <tr>
+                                <td>${c.id}</td>
+                                <td>${c.title}</td>
+                                <td>${c.category}</td>
+                                <td>${c.reported_by}</td>
+                                <td><button class="btn btn-danger" onclick="deleteCase(${c.id})">삭제</button></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('casesTableContainer').innerHTML = casesTableHTML;
+
             // Render Reports Table
-            const tableHTML = `
+            const reportsTableHTML = `
                 <table class="reports-table">
                     <thead>
                         <tr>
@@ -717,7 +907,7 @@
                 </table>
             `;
 
-            document.getElementById('reportsTableContainer').innerHTML = tableHTML;
+            document.getElementById('reportsTableContainer').innerHTML = reportsTableHTML;
             document.getElementById('adminLoginForm').style.display = 'none';
             document.getElementById('adminDashboard').style.display = 'block';
         }
@@ -726,6 +916,14 @@
         function updateStatus(reportId, status) {
             dataManager.updateReportStatus(reportId, status);
             renderAdminDashboard();
+        }
+
+        // Delete Case
+        function deleteCase(caseId) {
+            if (confirm('정말로 이 사례를 삭제하시겠습니까?')) {
+                dataManager.deleteCase(caseId);
+                renderAdminDashboard();
+            }
         }
 
         // Delete Report
@@ -742,6 +940,14 @@
             document.getElementById('adminLoginForm').style.display = 'block';
             document.getElementById('adminDashboard').style.display = 'none';
             document.getElementById('loginForm').reset();
+        }
+
+        // Modal close on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('addCaseModal');
+            if (event.target === modal) {
+                closeAddCaseModal();
+            }
         }
 
         // Initialize
